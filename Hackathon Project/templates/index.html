@@ -1,0 +1,193 @@
+﻿<html>
+<title>Hackathon Problem Statement Project</title>
+
+<head>
+
+<nav>
+
+<ul>
+     <li style="padding-right: 220px;font-size:21; padding-top: 8px;color:white">  
+Smart India Hackathon Project<li>  
+        <li>  <a href="/">  Home  </a> </li>  
+
+    <li> <a href="/clg">College  </a>  </li>
+</ul>
+
+</nav>
+
+<h1  style="color: white; font-weight:bold;"></h1>
+</head>
+
+
+<body>
+
+
+
+    <style>
+        /* Style for the translation popup */
+        #translation-popup {
+            display: none;
+            position: absolute;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 30px;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+        }
+        
+        button{
+          background-color: white;
+          border: transparent;
+        }
+
+    </style>
+    
+</head>
+<body>
+
+<div id="translation-popup">
+    <div id="translatedContent"></div>
+    <button id="speakButton">🔊 </button>
+</div>
+
+<script>
+    // Function to handle text translation
+    function translateText(selectedText) {
+        // Show the translation popup
+        const translationPopup = document.getElementById('translation-popup');
+        translationPopup.style.display = 'block';
+
+        // Send the selected text to the server for translation
+        fetch(`/translate?text=${selectedText}`)
+            .then(response => response.json())
+            .then(data => {
+                // Display the translated text in the popup
+                const translatedContent = document.getElementById('translatedContent');
+                translatedContent.textContent = data.translation;
+            })
+            .catch(error => {
+                console.error('Translation error:', error);
+            });
+    }
+
+    // Function to speak the translated content in Hindi
+    function speakInHindi() {
+        const translatedContent = document.getElementById("translatedContent").textContent;
+        const synth = window.speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(translatedContent);
+
+        // Set the language to Hindi (you can adjust this as needed)
+        utterance.lang = "hi-IN";
+
+        // Speak the translated content
+        synth.speak(utterance);
+    }
+
+    // Add an event listener for text highlighting
+    document.addEventListener('mouseup', function() {
+        const selectedText = window.getSelection().toString().trim();
+        if (selectedText !== '') {
+            translateText(selectedText);
+        }
+    });
+
+    // Add an event listener to the "Speak in Hindi" button
+    document.getElementById("speakButton").addEventListener("click", speakInHindi);
+</script>
+
+
+    <div class="Project">
+
+<text><b style="font-weight: bold;">PROBLEM STATEMENT:</b></br> Language Translator Tool to convert English to Hindi (Official Language) Which can be used by all the Government  Organizations
+Websites Officialy</text>
+
+    </div>
+
+
+    <div class="bg-image">
+        <!-- Your content goes here -->
+    </div>
+    <style>.bg-image {
+    background-image: url("{{ url_for('static', filename='bg.gif')}}"); /* Replace with your image path or URL */
+    background-size: cover;
+    background-position: center;
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: -1;
+}body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+</style>
+</body>
+
+
+
+<style>
+.Project{
+margin-left: 40px;;
+text-align: flex-start;
+width: 4cm;
+
+font-family: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
+font-size: medium;
+box-sizing: border-box;
+
+
+}
+
+text
+{margin-top: 80px;
+    box-sizing: border-box;
+    border-radius: 10px;
+    border: 2px solid;
+    font-weight:200;
+    width:8cm;
+    font-size: 21;padding: 15px;;
+    font-family:Verdana, Geneva, Tahoma, sans-serif;
+    position: absolute;
+    color: aliceblue;
+}
+    ul{
+
+justify-content: flex-start;
+        display:flex;
+        list-style-type: none;          }
+
+li{
+font-weight: bold;
+font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+font-size:medium;
+color: white;
+padding-top: 10px;;
+    padding-right: 50px;
+
+}
+
+
+a:hover{
+
+animation: myk 2s ease-in  infinite;
+
+}
+
+
+@keyframes myk {
+
+    0%{ color: rgb(205, 167, 255); }
+    50%{ color: rgb(182, 93, 255);}
+    100%{ color: rgb(121, 67, 143);}
+}
+a{
+    color: rgb(255, 255, 255);
+    text-decoration: none;
+}
+</style>
+
+
+</html>
