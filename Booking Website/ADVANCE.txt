@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking System</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+
+    <style>
+        /* Additional Custom Styles */
+        body {
+            padding: 20px;
+        }
+        .time-slot-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+        .time-slot-card {
+            width: calc(25% - 20px);
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        @media (max-width: 768px) {
+            .time-slot-card {
+                width: calc(50% - 20px);
+            }
+        }
+        @media (max-width: 576px) {
+            .time-slot-card {
+                width: 100%;
+            }
+        }
+        .popup {
+            display: none;
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            overflow: auto;
+        }
+        .popup-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        .popup-close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .popup-close:hover,
+        .popup-close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<?php
+// Connect to the database
+$servername = "localhost";
+$username = "root";
+$password = "";
+$database = "book";
+
+$conn = new mysqli($servername, $username, $password, $database);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Define available time slots
+$timeSlots = array(
+    "9:00 AM - 10:00 AM",
+    "10:00 AM - 11:00 AM",
+    "11:00 AM - 12:00 PM",
+    "12:00 PM - 1:00 PM",
+    "1:00 PM - 2:00 PM",
+    "2:00 PM - 3:00 PM",
+    "3:00 PM - 4:00 PM",
+    "4:00 PM - 5:00 PM",
+    "5:00 PM - 6:00 PM",
+    "7:00 PM - 8:00 PM"
+);
+
+// Generate dates for the next 7 days
+$dates = array();
+for ($i = 0; $i < 7; $i++) {
+    $dates[] = date('Y-m-d', strtotime("+$i days"));
+}
+
+// Get current booking counts for each time slot and date
+$bookingCounts = array();
+foreach ($dates as $date) {
+    foreach ($timeSlots as $slot) {
+        $sql = "SELECT COUNT(*) AS bookings FROM bookings WHERE date = ? AND time_slot = ?";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("ss", $date, $slot);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result->fetch_assoc();
+        $bookingCounts[$date][$slot] = $row['bookings'];
+        $stmt->close();
+    }
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Ensure date and time_slot are set in POST request
+    if (isset($_POST["date"]) && isset($_POST["time_slot"])) {
+        // Get the selected date and time slot
+        $selectedDate = $_POST["date"];
+        $selectedSlot = $_POST["time_slot"];
+        // Get user input data
+        $name = $_POST["name"];
+        $phone = $_POST["phone"];
+        $email = $_POST["email"];
+
+        // Check if the selected time slot is available
+        if (isset($bookingCounts[$selectedDate][$selectedSlot]) && $bookingCounts[$selectedDate][$selectedSlot] < 10) {
+            // Save the booking information to the database
+            $stmt = $conn->prepare("INSERT INTO bookings (date, time_slot, name, phone, email) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param("sssss", $selectedDate, $selectedSlot, $name, $phone, $email);
+            $stmt->execute();
+            $stmt->close();
+            
+            // Update the booking count for the selected slot
+            $bookingCounts[$selectedDate][$selectedSlot]++;
+
+            echo "<p class='alert alert-success'>Your booking for $selectedSlot on $selectedDate has been confirmed.</p>";
+        } else {
+            echo "<p class='alert alert-danger'>Sorry, the selected time slot is not available.</p>";
+        }
+    } else {
+        echo "<p class='alert alert-danger'>Date and time slot are required.</p>";
+    }
+}
+?>
+
+<div class="container">
+    <h2 class="mt-5 mb-4">Select a Time Slot</h2>
+   
+    <!-- Date selection form -->
+    <form method="get" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+        <div class="form-group">
+            <label for="customDate">Select Date:</label>
+            <input type="date" class="form-control" id="customDate" name="custom_date">
+        </div>
+        <button type="submit" class="btn btn-primary">Show Slots</button>
+    </form>
+
+    <div class='time-slot-container' id="timeSlotsContainer">
+        <?php
+        // Display available time slots for the selected date
+        if (isset($_GET['custom_date'])) {
+            $selectedDate = $_GET['custom_date'];
+            foreach ($timeSlots as $slot) {
+                $availableSlots = 10 - $bookingCounts[$selectedDate][$slot];
+                if ($availableSlots > 0) {
+                    echo "<div class='card time-slot-card' onclick='openForm(\"$selectedDate\", \"$slot\")'>";
+                    echo "<div class='card-body'>";
+                    echo "<h5 class='card-title'>$slot</h5>";
+                    echo "<p class='card-text'>Available Slots: $availableSlots</p>";
+                    echo "</div>";
+                    echo "</div>";
+                } else {
+                    echo "<div class='card time-slot-card bg-light'>";
+                    echo "<div class='card-body'>";
+                    echo "<h5 class='card-title'>$slot</h5>";
+                    echo "<p class='card-text'>Fully Booked</p>";
+                    echo "</div>";
+                    echo "</div>";
+                }
+            }
+        }
+        ?>
+    </div>
+</div>
+
+<!-- Booking Popup -->
+<div class="popup" id="bookingPopup">
+    <div class="popup-content">
+        <span class="popup-close" onclick="closePopup()">&times;</span>
+        <h2 class="mt-4 mb-3">Book Now</h2>
+        <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+            <input type="hidden" id="selectedDate" name="date">
+            <input type="hidden" id="selectedTimeSlot" name="time_slot">
+            <div class="form-group">
+                <label for="name">Your Name:</label>
+                <input type="text" class="form-control" name="name" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone Number:</label>
+                <input type="text" class="form-control" name="phone" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email Address:</label>
+                <input type="email" class="form-control" name="email" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</div>
+
+<!-- Bootstrap JS and dependencies -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    // Function to show available time slots for a selected date
+    function showSlots() {
+        var selectedDate = document.getElementById('customDate').value;
+        var timeSlotsContainer = document.getElementById('timeSlotsContainer');
+        timeSlotsContainer.innerHTML = ''; // Clear previous content
+
+        // Request current booking counts for each time slot and date
+        var bookingCounts = {};
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'getBookings.php?date=' + selectedDate, true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                bookingCounts = JSON.parse(xhr.responseText);
+
+                // Display available time slots
+                var timeSlots = [
+                    "9:00 AM - 10:00 AM",
+                    "10:00 AM - 11:00 AM",
+                    "11:00 AM - 12:00 PM",
+                    "12:00 PM - 1:00 PM",
+                    "1:00 PM - 2:00 PM",
+                    "2:00 PM - 3:00 PM",
+                    "3:00 PM - 4:00 PM",
+                    "4:00 PM - 5:00 PM",
+                    "5:00 PM - 6:00 PM",
+                    "7:00 PM - 8:00 PM"
+                ];
+
+                timeSlots.forEach(function(slot) {
+                    var availableSlots = 10 - bookingCounts[slot];
+                    var card = document.createElement('div');
+                    card.className = 'card time-slot-card';
+                    if (availableSlots > 0) {
+                        card.innerHTML = `
+                            <div class='card-body' onclick='openForm("${selectedDate}", "${slot}")'>
+                                <h5 class='card-title'>${slot}</h5>
+                                <p class='card-text'>Available Slots: ${availableSlots}</p>
+                            </div>
+                        `;
+                    } else {
+                        card.innerHTML = `
+                            <div class='card-body bg-light'>
+                                <h5 class='card-title'>${slot}</h5>
+                                <p class='card-text'>Fully Booked</p>
+                            </div>
+                        `;
+                    }
+                    timeSlotsContainer.appendChild(card);
+                });
+            } else {
+                console.error('Request failed. Status: ' + xhr.status);
+            }
+        };
+        xhr.send();
+    }
+
+    // Function to open the booking form popup
+    function openForm(date, timeSlot) {
+        document.getElementById('selectedDate').value = date;
+        document.getElementById('selectedTimeSlot').value = timeSlot;
+        document.getElementById('bookingPopup').style.display = 'block';
+
+        // Hide all other forms (if any)
+        var popups = document.getElementsByClassName('popup');
+        for (var i = 0; i < popups.length; i++) {
+            if (popups[i].id !== 'bookingPopup') {
+                popups[i].style.display = 'none';
+            }
+        }
+    }
+
+    // Function to close the booking form popup
+    function closePopup() {
+        document.getElementById('bookingPopup').style.display = 'none';
+    }
+</script>
+
+<?php
+// Close the database connection
+$conn->close();
+?>
